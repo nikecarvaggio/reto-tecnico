@@ -1,6 +1,9 @@
 ### Features
 
-- reto técnico
+- En la carpeta DB se encuentra un docker para ejecutar facilmente un pgamin + postgress: docker compose up -d
+- En la carpeta login se encuentra el backend y frontend para el login con JWT
+- En la carpeta Spring se encuentran los 2 ultimos ejercicios
+- En el apartado de este readme de bases de datos se encuentra los ejercicios asociados a las bases de datos
 
 # Readme
 
