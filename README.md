@@ -143,31 +143,30 @@ GET, create para Post, update para PATCH
 y utilizamosa el decordar permmission_classes para especificar que este 
 metodo requiere autenticación.
 
-    
     from backend.serializer import UserSerializer
-    from django.contrib.auth.models import User
-    from django.shortcuts import get_object_or_404
-    from rest_framework import viewsets
-    from rest_framework.response import Response
-    from rest_framework.permissions import IsAuthenticated
-    from rest_framework.decorators import api_view, permission_classes
-    
-    
-    class UserViewSet(viewsets.ViewSet):
-        """
-        A simple ViewSet for listing or retrieving users.
-        """
-        @permission_classes((IsAuthenticated, ))
-        def list(self, request):
-            uid = request.user.id
-            queryset = User.objects.filter(pk=uid)
-          
-            serializer_context = {
-                'request': request,
-            }
-            serializer = UserSerializer(queryset, 
-context=serializer_context, many=True)
-            return Response(serializer.data)
+        from django.contrib.auth.models import User
+        from django.shortcuts import get_object_or_404
+        from rest_framework import viewsets
+        from rest_framework.response import Response
+        from rest_framework.permissions import IsAuthenticated
+        from rest_framework.decorators import api_view, permission_classes
+        
+        
+        class UserViewSet(viewsets.ViewSet):
+            """
+            A simple ViewSet for listing or retrieving users.
+            """
+            @permission_classes((IsAuthenticated, ))
+            def list(self, request):
+                uid = request.user.id
+                queryset = User.objects.filter(pk=uid)
+              
+                serializer_context = {
+                    'request': request,
+                }
+                serializer = UserSerializer(queryset, 
+    context=serializer_context, many=True)
+                return Response(serializer.data)
 
 finalmente probamos en postman el resultado y nos trae solo el usuario al 
 que corresponde este token activo.
@@ -437,16 +436,67 @@ proyecto REACT.js.
 2. En el archivo LoginPage.vue, agrega el siguiente código
 
     import React, { useState } from 'react';
-    import { withRouter } from 'react-router-dom';
-    
-    import '../../App.css';
-    
-    
-    function SignInPage(props) { // Aquí se pasa props como parámetro
-      const [email, setEmail] = useState('');
-      const [password, setPassword] = useState('');
-    
-      const handleSubmit = async (e) => {
+        import { withRouter } from 'react-router-dom';
+        
+        import '../../App.css';
+        
+        
+        function SignInPage(props) { // Aquí se pasa props como parámetro
+          const [email, setEmail] = useState('');
+          const [password, setPassword] = useState('');
+        
+          const handleSubmit = async (e) => {
+            e.preventDefault();
+        
+            const response = await fetch('http://localhost:8000/api/token/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ username: email, password: password }),
+            });
+            const data = await response.json();
+            console.log("data: ", data)
+        
+            if (response.ok) {
+              localStorage.setItem('token', data.access);
+              props.history.push("/home")
+            } else {
+              console.log('Login failed');
+              alert(data.detail)
+            }
+          };
+    	   return (
+            <div className="text-center m-5-auto">
+              <h2>Sign in to us</h2>
+              <form onSubmit={handleSubmit}>
+                <p>
+                  <label>Username or email address</label><br />
+                  <input type="text" name="email" value={email} onChange={(e) 
+    => setEmail(e.target.value)} required />
+                </p>
+                <p>
+                  <label>Password</label>
+                  <br />
+                  <input type="password" name="password" value={password} 
+    onChange={(e) => setPassword(e.target.value)} required />
+                </p>
+                <p>
+                  <button id="sub_btn" type="submit">Login</button>
+                </p>
+              </form>
+            </div>
+          );
+        }
+        export default withRouter(SignInPage);
+
+
+La logica principal ocurre en la promesa asincrona donde se le solicta el 
+token al backend, este lo guarda en el local storage, de esta forma cada 
+petición que se realice validará con el token del lado del servidor si 
+tiene permiso o no de usar lo servicios, este token se guarda localmente en el localstorage, se guarda el access token en un espacio llamando token creado en el localstorage del navegador web
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
     
         const response = await fetch('http://localhost:8000/api/token/', {
@@ -467,38 +517,7 @@ proyecto REACT.js.
           alert(data.detail)
         }
       };
-	   return (
-        <div className="text-center m-5-auto">
-          <h2>Sign in to us</h2>
-          <form onSubmit={handleSubmit}>
-            <p>
-              <label>Username or email address</label><br />
-              <input type="text" name="email" value={email} onChange={(e) 
-=> setEmail(e.target.value)} required />
-            </p>
-            <p>
-              <label>Password</label>
-              <br />
-              <input type="password" name="password" value={password} 
-onChange={(e) => setPassword(e.target.value)} required />
-            </p>
-            <p>
-              <button id="sub_btn" type="submit">Login</button>
-            </p>
-          </form>
-        </div>
-      );
-    }
-    export default withRouter(SignInPage);
-	  
-	  
-	  
-
-
-La logica principal ocurre en la promesa asincrona donde se le solicta el 
-token al backend, este lo guarda en el local storage, de esta forma cada 
-petición que se realice validará con el token del lado del servidor si 
-tiene permiso o no de usar lo servicios.
+    
 
 # Base de datos y scripts
 
@@ -766,83 +785,146 @@ mediante jdbctemplate.
 
 Se crea un proyecto springboot con las siguientes dependencias 
 
-    <?xml version="1.0" encoding="UTF-8"?>
-    <project xmlns="http://maven.apache.org/POM/4.0.0" 
-xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
-https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    	<modelVersion>4.0.0</modelVersion>
-    	<parent>
-    		<groupId>org.springframework.boot</groupId>
-    		<artifactId>spring-boot-starter-parent</artifactId>
-    		<version>2.5.4</version>
-    		<relativePath/> <!-- lookup parent from repository -->
-    	</parent>
-    	<groupId>com.bezkoder</groupId>
-    	<artifactId>spring-boot-jdbctemplate-crud-example</artifactId>
-    	<version>0.0.1-SNAPSHOT</version>
-    	<name>spring-boot-jdbctemplate-crud-example</name>
-    	<description>Spring Boot JDBCTemplate CRUD example with H2 
-Database - Rest API</description>
-    	<properties>
-    		<java.version>1.8</java.version>
-    	</properties>
-    	<dependencies>
-    		<dependency>
-    			<groupId>org.springframework.boot</groupId>
-    			
-<artifactId>spring-boot-starter-data-jdbc</artifactId>
-    		</dependency>
-    		
-    		<dependency>
-    			<groupId>org.springframework.boot</groupId>
-    			<artifactId>spring-boot-starter-web</artifactId>
-    		</dependency>
-    
-    		<dependency>
-    			<groupId>com.h2database</groupId>
-    			<artifactId>h2</artifactId>
-    			<scope>runtime</scope>
-    		</dependency>
-    		
-    		<dependency>
-    			<groupId>org.springframework.boot</groupId>
-    			<artifactId>spring-boot-starter-test</artifactId>
-    			<scope>test</scope>
-    		</dependency>
-    		<dependency>
-    			<groupId>mysql</groupId>
-    			<artifactId>mysql-connector-java</artifactId>
-    			<version>8.0.14</version>
-    		</dependency>
-    		<dependency>
-    			<groupId>org.postgresql</groupId>
-    			<artifactId>postgresql</artifactId>
-    			<version>42.2.10</version>
-    		</dependency>
-    	</dependencies>
-    
-    	<build>
-    		<plugins>
-    			<plugin>
-    				
-<groupId>org.springframework.boot</groupId>
-    				
-<artifactId>spring-boot-maven-plugin</artifactId>
-    			</plugin>
-    		</plugins>
-    	</build>
-    
-    </project>
-    
+        <?xml version="1.0" encoding="UTF-8"?>
+        <project xmlns="http://maven.apache.org/POM/4.0.0" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+    https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        	<modelVersion>4.0.0</modelVersion>
+        	<parent>
+        		<groupId>org.springframework.boot</groupId>
+        		<artifactId>spring-boot-starter-parent</artifactId>
+        		<version>2.5.4</version>
+        		<relativePath/> <!-- lookup parent from repository -->
+        	</parent>
+        	<groupId>com.bezkoder</groupId>
+        	<artifactId>spring-boot-jdbctemplate-crud-example</artifactId>
+        	<version>0.0.1-SNAPSHOT</version>
+        	<name>spring-boot-jdbctemplate-crud-example</name>
+        	<description>Spring Boot JDBCTemplate CRUD example with H2 
+    Database - Rest API</description>
+        	<properties>
+        		<java.version>1.8</java.version>
+        	</properties>
+        	<dependencies>
+        		<dependency>
+        			<groupId>org.springframework.boot</groupId>
+        			
+    <artifactId>spring-boot-starter-data-jdbc</artifactId>
+        		</dependency>
+        		
+        		<dependency>
+        			<groupId>org.springframework.boot</groupId>
+        			<artifactId>spring-boot-starter-web</artifactId>
+        		</dependency>
+        
+        		<dependency>
+        			<groupId>com.h2database</groupId>
+        			<artifactId>h2</artifactId>
+        			<scope>runtime</scope>
+        		</dependency>
+        		
+        		<dependency>
+        			<groupId>org.springframework.boot</groupId>
+        			<artifactId>spring-boot-starter-test</artifactId>
+        			<scope>test</scope>
+        		</dependency>
+        		<dependency>
+        			<groupId>mysql</groupId>
+        			<artifactId>mysql-connector-java</artifactId>
+        			<version>8.0.14</version>
+        		</dependency>
+        		<dependency>
+        			<groupId>org.postgresql</groupId>
+        			<artifactId>postgresql</artifactId>
+        			<version>42.2.10</version>
+        		</dependency>
+        	</dependencies>
+        
+        	<build>
+        		<plugins>
+        			<plugin>
+        				
+    <groupId>org.springframework.boot</groupId>
+        				
+    <artifactId>spring-boot-maven-plugin</artifactId>
+        			</plugin>
+        		</plugins>
+        	</build>
+        
+        </project>
+        
 
 estos proyectos se pueden pre configurar de una forma un poco sencilla 
 desde la web https://start.spring.io/
 
 Se crea también una base de datos en mysql con las siguientes tablas
 
+        CREATE DATABASE  IF NOT EXISTS `users` /*!40100 DEFAULT CHARACTER SET 
+    utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+        USE `users`;
+        -- MySQL dump 10.13  Distrib 8.0.33, for macos13 (arm64)
+        --
+        -- Host: localhost    Database: users
+        -- ------------------------------------------------------
+        -- Server version	8.0.33
+        
+        /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+        /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+        /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+        /*!50503 SET NAMES utf8 */;
+        /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+        /*!40103 SET TIME_ZONE='+00:00' */;
+        /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+        /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, 
+    FOREIGN_KEY_CHECKS=0 */;
+        /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, 
+    SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+        /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+        
+        --
+        -- Table structure for table `clients`
+        --
+        
+        DROP TABLE IF EXISTS `clients`;
+        /*!40101 SET @saved_cs_client     = @@character_set_client */;
+        /*!50503 SET character_set_client = utf8mb4 */;
+        CREATE TABLE `clients` (
+          `id` int NOT NULL AUTO_INCREMENT,
+          `name` varchar(45) DEFAULT NULL,
+          `balance` bigint DEFAULT NULL,
+          `active` tinyint DEFAULT NULL,
+          PRIMARY KEY (`id`),
+          CONSTRAINT `ck_balance_positive` CHECK ((`balance` >= 0))
+        ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 
+    COLLATE=utf8mb4_0900_ai_ci;
+        /*!40101 SET character_set_client = @saved_cs_client */;
+        
+        --
+        -- Dumping data for table `clients`
+        --
+        
+        LOCK TABLES `clients` WRITE;
+        /*!40000 ALTER TABLE `clients` DISABLE KEYS */;
+        INSERT INTO `clients` VALUES (1,'NICOLAS CARABALLO 
+    ROJAS',777,1),(2,'ANDRES HERNANDEZ',7123,1);
+        /*!40000 ALTER TABLE `clients` ENABLE KEYS */;
+        UNLOCK TABLES;
+        /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+        
+        /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+        /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+        /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+        /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+        /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+        /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+        /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+        
+        -- Dump completed on 2023-04-29 22:50:30
+        
+    
     CREATE DATABASE  IF NOT EXISTS `users` /*!40100 DEFAULT CHARACTER SET 
-utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+    utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
     USE `users`;
     -- MySQL dump 10.13  Distrib 8.0.33, for macos13 (arm64)
     --
@@ -858,38 +940,37 @@ utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
     /*!40103 SET TIME_ZONE='+00:00' */;
     /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
     /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, 
-FOREIGN_KEY_CHECKS=0 */;
-    /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, 
-SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+    FOREIGN_KEY_CHECKS=0 */;
+    /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' 
+    */;
     /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
     
     --
-    -- Table structure for table `clients`
+    -- Table structure for table `users`
     --
     
-    DROP TABLE IF EXISTS `clients`;
+    DROP TABLE IF EXISTS `users`;
     /*!40101 SET @saved_cs_client     = @@character_set_client */;
     /*!50503 SET character_set_client = utf8mb4 */;
-    CREATE TABLE `clients` (
+    CREATE TABLE `users` (
       `id` int NOT NULL AUTO_INCREMENT,
       `name` varchar(45) DEFAULT NULL,
-      `balance` bigint DEFAULT NULL,
+      `lastname` varchar(45) DEFAULT NULL,
       `active` tinyint DEFAULT NULL,
-      PRIMARY KEY (`id`),
-      CONSTRAINT `ck_balance_positive` CHECK ((`balance` >= 0))
-    ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 
-COLLATE=utf8mb4_0900_ai_ci;
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 
+    COLLATE=utf8mb4_0900_ai_ci;
     /*!40101 SET character_set_client = @saved_cs_client */;
     
     --
-    -- Dumping data for table `clients`
+    -- Dumping data for table `users`
     --
     
-    LOCK TABLES `clients` WRITE;
-    /*!40000 ALTER TABLE `clients` DISABLE KEYS */;
-    INSERT INTO `clients` VALUES (1,'NICOLAS CARABALLO 
-ROJAS',777,1),(2,'ANDRES HERNANDEZ',7123,1);
-    /*!40000 ALTER TABLE `clients` ENABLE KEYS */;
+    LOCK TABLES `users` WRITE;
+    /*!40000 ALTER TABLE `users` DISABLE KEYS */;
+    INSERT INTO `users` VALUES 
+    (1,'NICOLAS','CARABALLO',1),(2,'CARABALLO','NICOLAS',0),(3,'Ortiz','Javier',0),(4,'Ortiz','Javier',0),(5,'Ortiz','Javier',0);
+    /*!40000 ALTER TABLE `users` ENABLE KEYS */;
     UNLOCK TABLES;
     /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
     
@@ -901,69 +982,6 @@ ROJAS',777,1),(2,'ANDRES HERNANDEZ',7123,1);
     /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
     /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
     
-    -- Dump completed on 2023-04-29 22:50:30
-    
-
-CREATE DATABASE  IF NOT EXISTS `users` /*!40100 DEFAULT CHARACTER SET 
-utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
-USE `users`;
--- MySQL dump 10.13  Distrib 8.0.33, for macos13 (arm64)
---
--- Host: localhost    Database: users
--- ------------------------------------------------------
--- Server version	8.0.33
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, 
-FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' 
-*/;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
---
--- Table structure for table `users`
---
-
-DROP TABLE IF EXISTS `users`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `users` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(45) DEFAULT NULL,
-  `lastname` varchar(45) DEFAULT NULL,
-  `active` tinyint DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 
-COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `users`
---
-
-LOCK TABLES `users` WRITE;
-/*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES 
-(1,'NICOLAS','CARABALLO',1),(2,'CARABALLO','NICOLAS',0),(3,'Ortiz','Javier',0),(4,'Ortiz','Javier',0),(5,'Ortiz','Javier',0);
-/*!40000 ALTER TABLE `users` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
--- Dump completed on 2023-04-29 22:50:30
 
 
 se crean los objetos pertinentes, archivo de conexion JDBC para cada uno y 
